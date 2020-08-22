@@ -1,24 +1,24 @@
 var express = require('express');
 var router = express.Router();
-var CATEGORIA = require("../database/categoria");
+var MENUS = require("../database/menus");
 
-router.post("/categoria", (req, res) => {
+router.post("/menus", (req, res) => {
 
    //Ejemplo de validacion
    var data = req.body;
    data ["registerdate"] = new Date();
-   var newcategoria = new CATEGORIA(data);
-   newcategoria.save().then((rr) =>{
+   var newmenus = new MENUS(data);
+   newmenus.save().then((rr) =>{
      res.status(200).json({
        "resp": 200,
-       "dato": newcategoria,
+       "dato": newmenus,
        "id" : rr._id,
-       "msn" : "menu  agregado con exito"
+       "msn" : "Menu agregado con exito"
      });
    });
  });
  
- router.get("/categoria", (req, res) => {
+ router.get("/menus", (req, res) => {
   var skip = 0;
   var limit = 10;
   if (req.query.skip != null) {
@@ -28,7 +28,7 @@ router.post("/categoria", (req, res) => {
   if (req.query.limit != null) {
     limit = req.query.limit;
   }
-  CATEGORIA.find({}).skip(skip).limit(limit).exec((err, docs) => {
+  MENUS.find({}).skip(skip).limit(limit).exec((err, docs) => {
     if (err) {
       res.status(500).json({
         "msn" : "Error en la db"
@@ -41,10 +41,10 @@ router.post("/categoria", (req, res) => {
   });
 });
 
-router.get(/categoria\/[a-z0-9]{1,}$/, (req, res) => {
+router.get(/menus\/[a-z0-9]{1,}$/, (req, res) => {
   var url = req.url;
   var id = url.split("/")[2];
-  CATEGORIA.findOne({_id : id}).exec( (error, docs) => {
+  MENUS.findOne({_id : id}).exec( (error, docs) => {
     if (docs != null) {
         res.status(200).json(docs);
         return;
@@ -57,7 +57,7 @@ router.get(/categoria\/[a-z0-9]{1,}$/, (req, res) => {
   })
 });
 
-router.patch("/categoria",(req, res) => {
+router.patch("/menus",(req, res) => {
   var params = req.body;
   var id = req.query.id;
   //Collection of data
@@ -78,7 +78,7 @@ router.patch("/categoria",(req, res) => {
       objupdate[newkeys[i]] = values[i];
   }
   console.log(objupdate);
-  CATEGORIA.findOneAndUpdate({_id: id}, objupdate ,(err, docs) => {
+  MENUS.findOneAndUpdate({_id: id}, objupdate ,(err, docs) => {
     if (err) {
       res.status(500).json({
           msn: "Existe un error en la base de datos"
@@ -87,22 +87,22 @@ router.patch("/categoria",(req, res) => {
     }
     res.status(200).json({
       "resp": 200,
-      "dato": CATEGORIA,
-      "msn" :  "Categoria  editado con exito"
+      "dato": MENUS,
+      "msn" : "Menu editado con exito"
     });
     return;
     
   });
 });
 
-router.delete('/categoria/:id', (req, res,) => {
-  var idcategoria = req.params.id;
+router.delete('/menus/:id', (req, res,) => {
+  var idmenus = req.params.id;
 
-  CATEGORIA.findByIdAndRemove(idcategoria).exec()
+  MENUS.findByIdAndRemove(idmenus).exec()
       .then(() => {
       res.status(200).json({
         "resp": 200,
-        "msn" : "eliminado con exito"
+        "msn" : "Eliminado con exito"
       });
       }).catch(err => {
           res.status(500).json({
