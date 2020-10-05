@@ -1,7 +1,6 @@
-const mongoose = require("./connect");
-var mon = require('mongoose');
-var Schema = mon.Schema;
-var MENUSSCHEMA = new mongoose.Schema({
+var mongoose = require("./connect");
+var Schema = mongoose.Schema;
+var menusSchema = Schema({
 
     restaurant: {
         type: Schema.Types.ObjectId,
@@ -9,7 +8,7 @@ var MENUSSCHEMA = new mongoose.Schema({
     },
     nombre: String,
     precio: {
-        type: Number,
+        type: Number
     },
     descripcion: String,
     fechaRegistro: {
@@ -17,7 +16,8 @@ var MENUSSCHEMA = new mongoose.Schema({
         default: Date.now()
     },
     foto: String
-});
-//Nombre, precio, descripcion, fechaderegistro, fotografia del producto
-var MENUS = mongoose.model("Menus", MENUSSCHEMA);
-module.exports = MENUS;
+})
+//Nombre, precio, descripción, fechaderegistro, fotografía del producto
+
+var menus = mongoose.model("Menus", menusSchema);
+module.exports = menus;

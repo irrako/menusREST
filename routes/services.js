@@ -1,28 +1,86 @@
 var express = require('express');
 var router = express.Router();
-var MENUS = require("../database/menus");
-var CLIENTE = require("../database/cliente");
-var ORDEN = require("../database/orden");
 
-var jwt = require("jsonwebtoken");
+var Menus = require("../database/menus");
+var Cliente = require("../database/cliente");
+var Orden = require("../database/orden");
+var Users = require("../database/users");
+
+//var jwt = require("jsonwebtoken");
+
+/*LOGIN*/
+router.post("/login", (req, res, next) => {
+  var email = req.body.email;
+  var password = req.body.password;
+  var result = Cliente.findOne({email: email,password: password}).exec((err, doc) => {
+    if (err) {
+      res.status(300).json({
+        msn : "No se puede concretar con la peticion"
+      });
+      return;
+    }
+    console.log(doc);
+    if (doc) {
+       console.log(result);
+      //res.status(200).json(doc);
+      jwt.sign({name: doc.email, password: doc.password}, "secretkey123", (err, token) => {
+          console.log(result);
+          res.status(200).json({
+            resp:200,
+            token : token,
+            dato:doc
+          });
+      })
+    } else {
+      res.status(400).json({
+        resp: 400,
+        msn : "El usuario no existe en la base de datos"
+      });
+    }
+  });
+});
+
+//Middelware
+function verifytoken (req, res, next) {
+  //Recuperar el header
+  const header = req.headers["authorization"];
+  if (header  == undefined) {
+      res.status(403).json({
+        msn: "No autorizado"
+      })
+  } else {
+      req.token = header.split(" ")[1];
+      jwt.verify(req.token, "secretkey123", (err, authData) => {
+        if (err) {
+          res.status(403).json({
+            msn: "No autorizado"
+          })
+        } else {
+          next();
+        }
+      });
+  }
+}
+
+/*MENUS*/
 
 router.post("/menus", (req, res) => {
 
-   //Ejemplo de validacion
-   var data = req.body;
-   data ["registerdate"] = new Date();
-   var newmenus = new MENUS(data);
-   newmenus.save().then((rr) =>{
-     res.status(200).json({
-       "resp": 200,
-       "dato": newmenus,
-       "id" : rr._id,
-       "msn" : "Menu agregado con exito"
-     });
-   });
- });
- 
- router.get("/menus", (req, res) => {
+  //Ejemplo de validacion
+  var data = req.body;
+  data ["registerdate"] = new Date();
+  var newmenus = new Menus(data);
+  newmenus.save().then((rr) =>{
+    res.status(200).json({
+      "resp": 200,
+      "dato": newmenus,
+      "id" : rr._id,
+      "msn" : "Menu agregado con exito"
+    });
+  });
+});
+
+router.get("/menus",(req, res) => {
   var skip = 0;
   var limit = 10;
   if (req.query.skip != null) {
@@ -32,7 +90,7 @@ router.post("/menus", (req, res) => {
   if (req.query.limit != null) {
     limit = req.query.limit;
   }
-  MENUS.find({}).skip(skip).limit(limit).exec((err, docs) => {
+  Menus.find({}).skip(skip).limit(limit).exec((err, docs) => {
     if (err) {
       res.status(500).json({
         "msn" : "Error en la db"
@@ -48,7 +106,7 @@ router.post("/menus", (req, res) => {
 router.get(/menus\/[a-z0-9]{1,}$/, (req, res) => {
   var url = req.url;
   var id = url.split("/")[2];
-  MENUS.findOne({_id : id}).exec( (error, docs) => {
+  Menus.findOne({_id : id}).exec( (error, docs) => {
     if (docs != null) {
         res.status(200).json(docs);
         return;
@@ -56,11 +114,44 @@ router.get(/menus\/[a-z0-9]{1,}$/, (req, res) => {
 
     res.status(400).json({
       "respuesta":400,
-      "msn" : "No existe el recurso seleccionado "
+      "msn" : "No existe el recurso seleccionado"
     });
   })
 });
 
+router.delete('/menus/:id', (req, res,) => {
+  var idMenus = req.params.id;
+
+  Menus.findByIdAndRemove(idMenus).exec()
+      .then(() => {
+         
+      res.status(200).json({
+        "resp": 200,
+        "msn" :  "eliminado con exito"
+      });
+      }).catch(err => {
+          res.status(500).json({
+              error: err
+         
+            });
+
+      });
+
+
+});
+
+//Elimina un restaurant
+/*router.delete(/menus\/[a-z0-9]{1,}$/, (req, res) => {
+  var url = req.url;
+  var id = url.split("/")[2];
+  Menus.find({_id : id}).remove().exec( (err, docs) => {
+    res.json({
+        message: "Menu eliminado"
+        });
+  });
+});*/
+
+//Actualizar solo por elementos
 router.patch("/menus",(req, res) => {
   var params = req.body;
   var id = req.query.id;
@@ -82,7 +173,7 @@ router.patch("/menus",(req, res) => {
       objupdate[newkeys[i]] = values[i];
   }
   console.log(objupdate);
-  MENUS.findOneAndUpdate({_id: id}, objupdate ,(err, docs) => {
+  Menus.findOneAndUpdate({_id: id}, objupdate ,(err, docs) => {
     if (err) {
       res.status(500).json({
           msn: "Existe un error en la base de datos"
@@ -91,7 +182,7 @@ router.patch("/menus",(req, res) => {
     }
     res.status(200).json({
       "resp": 200,
-      "dato": MENUS,
+      "dato": menus,
       "msn" : "Menu editado con exito"
     });
     return;
@@ -108,20 +199,20 @@ router.put(/menus\/[a-z0-9]{1,}$/, (req, res) => {
   var result = _.difference(oficialkeys, keys);
   if (result.length > 0) {
     res.status(400).json({
-      "msn" : "No se puede actualizar error  utilice el formato patch"
+      "msn" : "No se puede actualizar error utilice el formato patch"
     });
     return;
   }
 
   var menus = {
-    tienda : req.body.tienda,
+    restaurant : req.body.restaurant,
     nombre : req.body.nombre,
     precio : req.body.precio,
     descripcion : req.body.descripcion,
     foto : req.body.foto
 
   };
-  MENUS.findOneAndUpdate({_id: id}, menus, (err, params) => {
+  Menus.findOneAndUpdate({_id: id}, objupdate, (err, params) => {
       if(err) {
         res.status(500).json({
           "msn": "No se pudo actualizar los datos"
@@ -130,38 +221,159 @@ router.put(/menus\/[a-z0-9]{1,}$/, (req, res) => {
       }
       res.status(200).json({
         "resp": 200,
-        "dato": MENUS,
+        "dato": menus,
         "msn" : "Menu editado con exito"
       });
       return;
   });
 });
 
-router.delete('/menus/:id', (req, res,) => {
-  var idmenus = req.params.id;
+/*CLIENTE*/
 
-  MENUS.findByIdAndRemove(idmenus).exec()
-      .then(() => {
-      res.status(200).json({
-        "resp": 200,
-        "msn" : "Eliminado con exito"
-      });
-      }).catch(err => {
-          res.status(500).json({
-              error: err
-         
-            });
+router.post("/cliente",  (req, res) => {
 
-      });
-});
-
-//Cliente
-
-//Insertar datos de la orden
-router.post("/orden",  (req, res) => {
   var data = req.body;
   data ["registerdate"] = new Date();
-  var neworden = new ORDEN(data);
+  var newcliente = new Cliente(data);
+  newcliente.save().then((rr) =>{
+    res.status(200).json({
+      "resp": 200,
+      "dato": newcliente,
+      "msn" : "Cliente agregado con exito"
+    });
+  });
+});
+
+router.get("/cliente",(req, res) => {
+  var skip = 0;
+  var limit = 10;
+  if (req.query.skip != null) {
+    skip = req.query.skip;
+  }
+
+  if (req.query.limit != null) {
+    limit = req.query.limit;
+  }
+  Cliente.find({}).skip(skip).limit(limit).exec((err, docs) => {
+    if (err) {
+      res.status(500).json({
+        "msn" : "Error en la db"
+      });
+      return;
+    }
+    res.json({
+      result : docs
+    });
+  });
+});
+
+/*router.get("/cliente", (req, res, ) =>{
+  Cliente.find({}).exec((error, docs) => {
+    
+    res.status(200).json({
+      "msn" : "No existe el pedido "
+    });
+  });
+});*/
+
+router.get(/cliente\/[a-z0-9]{1,}$/, (req, res) => {
+  var url = req.url;
+  var id = url.split("/")[2];
+  Cliente.findOne({_id : id}).exec( (error, docs) => {
+    if (docs != null) {
+        res.status(200).json(docs);
+        return;
+    }
+
+    res.status(200).json({
+      "msn" : "No existe el pedido "
+    });
+  })
+});
+
+//Elimina un cliente
+router.delete(/cliente\/[a-z0-9]{1,}$/, (req, res) => {
+  var url = req.url;
+  var id = url.split("/")[2];
+  Cliente.find({_id : id}).remove().exec( (err, docs) => {
+    res.json({
+        message: "cliente eliminado"
+        });
+  });
+});
+
+//Actualizar solo por elementos
+router.patch(/cliente\/[a-z0-9]{1,}$/, (req, res) => {
+  var url = req.url;
+  var id = url.split( "/")[4];
+  var keys = Object.keys(req.body);
+  var cliente = {
+    nombre : req.body.nombre,
+    ci : req.body.ci,
+    telefono : req.body.telefono,
+    email : req.body.email,
+
+  };
+  console.log(cliente);
+  Cliente.findOneAndUpdate({_id: id}, cliente, (err, params) => {
+      if(err) {
+        res.status(500).json({
+          "msn": "Error no se pudo actualizar los datos"
+        });
+        return;
+      }
+      res.status(200).json({
+        "resp": 200,
+        "dato": cliente,
+        "msn" : "Cliente editado con exito"
+      });
+      return;
+  });
+});
+
+//Actualiza los datos del cliente
+router.put(/cliente\/[a-z0-9]{1,}$/, (req, res) => {
+  var url = req.url;
+  var id = url.split("/")[2];
+  var keys  = Object.keys(req.body);
+  var oficialkeys = ['nombre', 'ci', 'telefono', 'email',];
+  var result = _.difference(oficialkeys, keys);
+  if (result.length > 0) {
+    res.status(400).json({
+      "msn" : "Error no se puede actualizar intentar con patch"
+    });fmulter
+    return;
+  }
+  var cliente = {
+    nombre : req.body.nombre,
+    ci : req.body.ci,
+    telefono : req.body.telefono,
+    email : req.body.email,
+
+  };
+  Cliente.findOneAndUpdate({_id: id}, cliente, (err, params) => {
+      if(err) {
+        res.status(500).json({
+          "msn": "Error no se pudo actualizar los datos"
+        });
+        return;
+      }
+      res.status(200).json({
+        "resp": 200,
+        "dato": cliente,
+        "msn" : "Cliente editado con exito"
+      });
+      return;
+  });
+});
+
+/*ORDEN*/
+//Insertar datos de la orden
+router.post("/orden",  (req, res) => {
+
+  var data = req.body;
+  data ["registerdate"] = new Date();
+  var neworden = new Orden(data);
   neworden.save().then((rr) =>{
     res.status(200).json({
       "resp": 200,
@@ -171,16 +383,16 @@ router.post("/orden",  (req, res) => {
   });
 });
 router.get("/orden", (req, res, next) =>{
-  ORDEN.find({}).populate("idmenu").populate("idrestaurant").populate("idcliente").exec((error, docs) => {
+  Orden.find({}).populate("menus").populate("cliente").populate("restaurant").exec((error, docs) => {
     res.status(200).json(docs);
   });
 });
 
-// Leer solo un usuario
+// Read only one user
 router.get(/orden\/[a-z0-9]{1,}$/, (req, res) => {
   var url = req.url;
   var id = url.split("/")[2];
-  ORDEN.findOne({_id : id}).exec( (error, docs) => {
+  Orden.findOne({_id : id}).exec( (error, docs) => {
     if (docs != null) {
         res.status(200).json(docs);
         return;
@@ -191,7 +403,7 @@ router.get(/orden\/[a-z0-9]{1,}$/, (req, res) => {
         "array_texto":
           {
             "texto":"<b>orden</b>",
-            "texto":"Registrado con exito"
+            "texto":"registrado con exito"
           }
 
 
@@ -199,7 +411,25 @@ router.get(/orden\/[a-z0-9]{1,}$/, (req, res) => {
   })
 });
 
-//Actualizar solo x elementos
+//Elimina una orden
+router.delete('/orden/:id', (req, res,) => {
+  var idOrden = req.params.id;
+
+  Orden.findByIdAndRemove(idOrden).exec()
+      .then(() => {
+          res.json({
+              message: "Orden eliminado"
+          });
+      }).catch(err => {
+          res.status(500).json({
+              error: err
+          });
+      });
+
+
+});
+
+//Actualizar solo por elementos
 router.patch(/orden\/[a-z0-9]{1,}$/, (req, res) => {
   var url = req.url;
   var id = url.split("/")[2];
@@ -209,7 +439,7 @@ router.patch(/orden\/[a-z0-9]{1,}$/, (req, res) => {
     orden[keys[i]] = req.body[keys[i]];
   }
   console.log(orden);
-  ORDEN.findOneAndUpdate({_id: id}, orden, (err, params) => {
+  Orden.findOneAndUpdate({_id: id}, orden, (err, params) => {
       if(err) {
         res.status(500).json({
           "msn": "Error no se pudo actualizar los datos"
@@ -218,7 +448,7 @@ router.patch(/orden\/[a-z0-9]{1,}$/, (req, res) => {
       }
       res.status(200).json({
         "resp": 200,
-        "dato": ORDEN,
+        "dato": orden,
         "msn" : "Orden editado con exito"
       });
       return;
@@ -234,21 +464,21 @@ router.put(/orden\/[a-z0-9]{1,}$/, (req, res) => {
   var result = _.difference(oficialkeys, keys);
   if (result.length > 0) {
     res.status(400).json({
-      "msn" : "Existe un error en el formato de envio puede hacer uso del metodo patch si desea editar solo un fragmentode la informacion"
+      "msn" : "Existe un error en el formato de envio puede hacer uso del metodo patch si desea editar solo un fragmento de la informacion"
     });
     return;
   }
 
-  var ORDEN = {
+  var orden = {
     menu : req.body.idmenu,
-    restaurant : req.body.idtienda,
+    restaurant : req.body.idrestaurant,
     cliente : req.body.idcliente,
     lugar_envio : req.body.lugar_envio,
     cantidad : req.body.cantidad,
     precio : req.body.precio,
     pagototal : req.body.pagototal
   };
-  ORDEN.findOneAndUpdate({_id: id}, orden, (err, params) => {
+  Orden.findOneAndUpdate({_id: id}, orden, (err, params) => {
       if(err) {
         res.status(500).json({
           "msn": "Error no se pudo actualizar los datos de la orden"
@@ -257,27 +487,11 @@ router.put(/orden\/[a-z0-9]{1,}$/, (req, res) => {
       }
       res.status(200).json({
         "resp": 200,
-        "dato": ORDEN,
+        "dato": orden,
         "msn" : "Orden editado con exito"
       });
       return;
   });
-});
-
-//Elimina una orden
-router.delete('/orden/:id', (req, res,) => {
-  var idORDEN = req.params.id;
-
-  ORDEN.findByIdAndRemove(idORDEN).exec()
-      .then(() => {
-          res.json({
-              message: "Orden eliminada"
-          });
-      }).catch(err => {
-          res.status(500).json({
-              error: err
-          });
-      });
 });
 
 module.exports = router;

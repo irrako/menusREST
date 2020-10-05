@@ -1,32 +1,36 @@
-const mongoose = require("./connect");//PEDIDOS
-var mon = require('mongoose');
-var Schema = mon.Schema;
-var ORDENSCHEMA = new mongoose.Schema({
+var mongoose = require("./connect");//pedidos
+//var ObjectId = mongoose.Schema.Types.ObjectId;
+const Schema = mongoose.Schema;
 
-    idmenus: {
-        type: Schema.Types.ObjectId,
-        ref: "Menus"
-        },
-      
-    idrestaurant:{
-        type: Schema.Types.ObjectId,
-        ref: "Restaurant"
-        },
-    idcliente : {
-        type: Schema.Types.ObjectId,
-        ref: "Cliente"
-        },
-    cantidad : Number,
-    lat : String,
-    long : String,
-    Fecha_Registro:
-          {
-            type:Date,
-            default: Date.now()
-          },
-    pago_total : Number,
-      });
+var ordenSchema = new Schema({
 
-    var ORDEN = mongoose.model("Orden", ORDENSCHEMA);
-    module.exports = ORDEN;
-      
+  //Idmenus : {type: Schema.ObjectId, ref: "menus"},
+  //Idrestaurant: {type: Schema.ObjectId, ref: "restaurant"},
+  //Idcliente : {type: Schema.ObjectId, ref: "cliente"},
+  cliente: {
+  type: Schema.Types.ObjectId,
+  ref: "Cliente"
+  },
+
+  restaurant:{
+    type: Schema.Types.ObjectId,
+    ref: "Restaurant"
+  },
+  menus : {
+    type: Schema.Types.ObjectId,
+    ref: "Menus"
+  },
+  lugar_envio: Number,
+  precios : Number,
+  cantidad :Number,
+  Fecha_Registro:
+    {
+      type:Date,
+      default: Date.now()
+
+    },
+
+pago_total : Number,
+});
+var orden = mongoose.model("Orden", ordenSchema);
+module.exports = orden;
